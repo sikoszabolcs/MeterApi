@@ -1,0 +1,6 @@
+﻿services:
+  meterapi:
+    image: meterapi
+    build:
+      context: .
+      dockerfile: Dockerfile
