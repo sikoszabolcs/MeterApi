@@ -19,7 +19,7 @@ public class CsvFileParserTests
     {
         var csvFileParser = new CsvFileParser();
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(
-            async () => await csvFileParser.ParseCsvFile(null!));
+            async () => await csvFileParser.ParseCsvFile((string)null!));
         Assert.Equal($"The file path is empty.", exception.Message);
     }
 

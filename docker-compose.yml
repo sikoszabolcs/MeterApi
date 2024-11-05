@@ -1,6 +1,22 @@
 ﻿services:
   meterapi:
     image: meterapi
+    container_name: meterapi
     build:
       context: .
       dockerfile: Dockerfile
+    ports:
+      - 8080:8080
+  db:
+    image: postgres
+    restart: always
+    container_name: postgresql
+    environment:
+      POSTGRES_USER: postgres_user      # Username for PostgreSQL
+      POSTGRES_PASSWORD: postgres_pass  # Password for PostgreSQL
+      POSTGRES_DB: meter_db         # Default database to create
+    volumes:
+      #- ./PostgresData:/var/lib/postgresql/data
+      - ./InitDbScripts:/docker-entrypoint-initdb.d
+    ports:
+      - 5432:5432

@@ -54,7 +54,7 @@ public class CsvFileParser
         }
     }
 
-    private async Task ParseCsvFile(FileStream csvFileStream)
+    public async Task<CsvParseResult> ParseCsvFile(Stream csvFileStream)
     {
         using var reader = new StreamReader(csvFileStream);
         using var csv = new CsvReader(
@@ -72,6 +72,12 @@ public class CsvFileParser
         {
             LastSuccessCount += 1;
         }
+
+        return new CsvParseResult
+        {
+            SuccessCount = LastSuccessCount,
+            FailCount = LastFailureCount
+        };
     }
 
     public int LastFailureCount { get; private set; }

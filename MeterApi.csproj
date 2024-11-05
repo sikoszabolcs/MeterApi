@@ -26,12 +26,19 @@
 
     <ItemGroup>
       <None Remove="MeterApiTests\**" />
+      <None Update="InitiDbScripts\Accounts.csv">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
     </ItemGroup>
 
     <ItemGroup>
       <_ContentIncludedByDefault Remove="MeterApiTests\MeterApiTests\obj\MeterApiTests.csproj.nuget.dgspec.json" />
       <_ContentIncludedByDefault Remove="MeterApiTests\MeterApiTests\obj\project.assets.json" />
       <_ContentIncludedByDefault Remove="MeterApiTests\MeterApiTests\obj\project.packagespec.json" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="PostgresData\" />
     </ItemGroup>
 
 </Project>
