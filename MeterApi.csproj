@@ -9,19 +9,25 @@
 
     <ItemGroup>
         <PackageReference Include="CsvHelper" Version="33.0.1" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.10" />
+        <PackageReference Include="Npgsql" Version="8.0.5" />
+        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.10" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0"/>
     </ItemGroup>
 
     <ItemGroup>
       <Compile Remove="MeterApiTests\**" />
+      <Compile Remove="PostgresData\**" />
     </ItemGroup>
 
     <ItemGroup>
       <EmbeddedResource Remove="MeterApiTests\**" />
+      <EmbeddedResource Remove="PostgresData\**" />
     </ItemGroup>
 
     <ItemGroup>
       <Content Remove="MeterApiTests\**" />
+      <Content Remove="PostgresData\**" />
     </ItemGroup>
 
     <ItemGroup>
@@ -29,16 +35,13 @@
       <None Update="InitiDbScripts\Accounts.csv">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
+      <None Remove="PostgresData\**" />
     </ItemGroup>
 
     <ItemGroup>
       <_ContentIncludedByDefault Remove="MeterApiTests\MeterApiTests\obj\MeterApiTests.csproj.nuget.dgspec.json" />
       <_ContentIncludedByDefault Remove="MeterApiTests\MeterApiTests\obj\project.assets.json" />
       <_ContentIncludedByDefault Remove="MeterApiTests\MeterApiTests\obj\project.packagespec.json" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <Folder Include="PostgresData\" />
     </ItemGroup>
 
 </Project>

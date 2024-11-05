@@ -1,23 +1,30 @@
-using System.Text.Json;
-using System.Text.Json.Nodes;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using CsvHelper;
 using CsvHelper.Configuration;
 using CsvHelper.Configuration.Attributes;
 using CsvHelper.TypeConversion;
 
+[Table("readings")]
 public class MeterReading
 {
     [Ignore]
+    [Key]
+    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+    [Column("id")]
     public int Id { get; set; }
     
     [Name("AccountId")]
+    [Column("account_id")]
     public int AccountId { get; set; }
     
     [Name("MeterReadingDateTime")]
+    //[TypeConverter(typeof(TestConverter))]
+    [Column("meter_reading_date_time")]
     public DateTime Instant { get; set; }
     
     [Name("MeterReadValue")]
-    //[TypeConverter(typeof(MeterReadingConverter))]
+    [Column("meter_read_value")]
     public int Value { get; set; }
 
     public override string ToString()
@@ -26,10 +33,13 @@ public class MeterReading
     }
 }
 
-// public class MeterReadingConverter : DefaultTypeConverter
+// /// <summary>
+// /// 
+// /// </summary>
+// public class TestConverter : DateTimeConverter
 // {
-//     public override object ConvertFromString(string text, IReaderRow row, MemberMapData memberMapData)
+//     public override object? ConvertFromString(string? text, IReaderRow row, MemberMapData memberMapData)
 //     {
-//         return 
+//         Convert.ToDateTime()
 //     }
 // }

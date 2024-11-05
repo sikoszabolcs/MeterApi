@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS accounts (
 );
 
 CREATE TABLE IF NOT EXISTS readings (
-    id INTEGER PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     account_id INTEGER REFERENCES accounts(id),
     meter_reading_date_time TIMESTAMP NOT NULL,
     meter_read_value INT NOT NULL CHECK (meter_read_value >= 0 AND meter_read_value <= 99999)
