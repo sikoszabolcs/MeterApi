@@ -1,3 +1,4 @@
+using MeterApi.Entities;
 using Microsoft.EntityFrameworkCore;
 
 public class AppDbContext : DbContext
@@ -8,6 +9,8 @@ public class AppDbContext : DbContext
 
     
     public DbSet<MeterReading> Readings { get; set; }
+    
+    public DbSet<Account> Accounts { get; set; }
 }
 
 public class Reading

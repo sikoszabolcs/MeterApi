@@ -38,34 +38,56 @@ public class MeterController(AppDbContext dbContext, ILogger<MeterController> lo
             var successCount = 0;
             var failCount = 0;
             
-            await foreach (var record in _csvFileParser.ParseCsvFile(file.OpenReadStream()))
-            {
-                record.Instant = DateTime.SpecifyKind(record.Instant, DateTimeKind.Utc);
-                var lastReading = 
-                    _dbContext.Readings
-                        .Where(reading => reading.AccountId == record.AccountId)
-                        .OrderByDescending(reading => reading.Id)
-                        .FirstOrDefault();
-                if (lastReading?.Value != record.Value)
-                {
-                    _dbContext.Readings.Add(record);
+            var accountIds = _dbContext.Accounts.Select(a => a.Id).ToHashSet();
 
-                    try
-                    {
-                        var updatedRows = await _dbContext.SaveChangesAsync();
-                        successCount += updatedRows;
-                    }
-                    catch (DbUpdateException ex)
-                    {
-                        failCount++;
-                    }
-                }
-                else
+            await using (var transaction = await _dbContext.Database.BeginTransactionAsync())
+            {
+                await foreach (var record in _csvFileParser.ParseCsvFile(file.OpenReadStream()))
                 {
+                    record.Instant = DateTime.SpecifyKind(record.Instant, DateTimeKind.Utc);
+                    var lastReading =
+                        _dbContext.Readings
+                            .Where(reading => reading.AccountId == record.AccountId)
+                            .OrderByDescending(reading => reading.Id)
+                            .FirstOrDefault();
+
+                    if (lastReading?.Value != record.Value)
+                    {
+                        if (record.Value is >= 0 and <= 99999)
+                        {
+                            if (accountIds.Contains(record.AccountId))
+                            {
+                                _dbContext.Readings.Add(record);
+                                continue;
+                            }
+
+                            _logger.LogWarning($"Invalid account id {record.AccountId} for record with AccountId {record.AccountId}, Instant {record.Instant.ToString(CultureInfo.InvariantCulture)}, Value {record.Value}");
+                        }
+                        else
+                        {
+                            _logger.LogWarning($"Value out of range for record with AccountId {record.AccountId}, Instant {record.Instant.ToString(CultureInfo.InvariantCulture)}, Value {record.Value}");
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogWarning($"Value already logged at {lastReading?.Instant.ToString(CultureInfo.InvariantCulture)} for record with A|ccountId {record.AccountId}, Instant {record.Instant.ToString(CultureInfo.InvariantCulture)}, Value {record.Value}");
+                    }
+                    
                     failCount++;
                 }
+                
+                try
+                {
+                    successCount = await _dbContext.SaveChangesAsync();
+                    // Commit the transaction
+                    await transaction.CommitAsync();
+                }
+                catch (DbUpdateException ex)
+                {
+                    
+                }
             }
-            
+
             return Ok($"{successCount}/{_csvFileParser.LastFailureCount + failCount}");
         }
         catch (InvalidOperationException e)
