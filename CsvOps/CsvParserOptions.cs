@@ -1,4 +1,4 @@
-namespace MeterApi.Controllers;
+namespace MeterApi.CsvOps;
 
 public class CsvParserOptions
 {

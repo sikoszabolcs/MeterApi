@@ -1,4 +1,5 @@
 using System.Globalization;
+using MeterApi.CsvOps;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -48,46 +49,10 @@ public class MeterController(
                     continue;
                 }
                 
-                record.Instant = DateTime.SpecifyKind(record.Instant, DateTimeKind.Utc);
-                // var lastReading =
-                //     _dbContext.Readings
-                //         .Where(reading => reading.AccountId == record.AccountId)
-                //         .OrderByDescending(reading => reading.Id)
-                //         .FirstOrDefault();
-                
-                var lastReading =
-                    _dbContext.Readings.Local
-                        .Where(reading => reading.AccountId == record.AccountId)
-                        .OrderByDescending(reading => reading.Id)
-                        .FirstOrDefault();
-
-                var checksOk = true;
-                if (lastReading != null)
+                if (IsValid(record))
                 {
-                    if (lastReading.Instant > record.Instant)
-                    {
-                        checksOk = false;
-                        _logger.LogWarning(
-                            $"Tried to log a historic entry for record with AccountId {record.AccountId}, Instant {record.Instant.ToString(CultureInfo.InvariantCulture)}, Value {record.Value}. New entries must be older than {lastReading?.Instant.ToString(CultureInfo.InvariantCulture)} ");
-                    }
-                }
-
-                if (record.Value is < 0 or > 99999)
-                {
-                    checksOk = false;
-                    _logger.LogWarning(
-                        $"Value out of range for record with AccountId {record.AccountId}, Instant {record.Instant.ToString(CultureInfo.InvariantCulture)}, Value {record.Value}");
-                }
-                
-                if (!_accountsCache.Contains(record.AccountId))
-                {
-                    checksOk = false;
-                    _logger.LogWarning(
-                        $"Invalid account id {record.AccountId} for record with AccountId {record.AccountId}, Instant {record.Instant.ToString(CultureInfo.InvariantCulture)}, Value {record.Value}");
-                }
-
-                if (checksOk)
-                {
+                    // Store time in UTC
+                    record.Instant = DateTime.SpecifyKind(record.Instant, DateTimeKind.Utc);
                     _dbContext.Readings.Add(record);
                     continue;
                 }
@@ -111,5 +76,41 @@ public class MeterController(
         {
             return BadRequest(e.Message);
         }
+    }
+
+    private bool IsValid(MeterReading record)
+    {
+        var lastReading =
+            _dbContext.Readings.Local
+                .Where(reading => reading.AccountId == record.AccountId)
+                .OrderByDescending(reading => reading.Id)
+                .FirstOrDefault();
+
+        var isValid = true;
+        if (lastReading != null)
+        {
+            if (lastReading.Instant > record.Instant)
+            {
+                isValid = false;
+                _logger.LogWarning(
+                    $"Tried to log a historic entry for record with AccountId {record.AccountId}, Instant {record.Instant.ToString(CultureInfo.InvariantCulture)}, Value {record.Value}. New entries must be older than {lastReading?.Instant.ToString(CultureInfo.InvariantCulture)} ");
+            }
+        }
+
+        if (record.Value is < 0 or > 99999)
+        {
+            isValid = false;
+            _logger.LogWarning(
+                $"Value out of range for record with AccountId {record.AccountId}, Instant {record.Instant.ToString(CultureInfo.InvariantCulture)}, Value {record.Value}");
+        }
+                
+        if (!_accountsCache.Contains(record.AccountId))
+        {
+            isValid = false;
+            _logger.LogWarning(
+                $"Invalid account id {record.AccountId} for record with AccountId {record.AccountId}, Instant {record.Instant.ToString(CultureInfo.InvariantCulture)}, Value {record.Value}");
+        }
+
+        return isValid;
     }
 }

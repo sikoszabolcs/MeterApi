@@ -1,5 +1,6 @@
 using EntityFrameworkCore.Testing.Moq;
 using MeterApi.Controllers;
+using MeterApi.CsvOps;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;

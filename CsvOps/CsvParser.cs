@@ -3,7 +3,7 @@ using CsvHelper;
 using CsvHelper.Configuration;
 using Microsoft.Extensions.Options;
 
-namespace MeterApi.Controllers;
+namespace MeterApi.CsvOps;
 
 public class CsvParser
 {
