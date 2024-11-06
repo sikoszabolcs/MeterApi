@@ -28,9 +28,9 @@ public class MeterControllerTests
         var fileMock = new Mock<IFormFile>();
         fileMock.Setup(x => x.FileName).Returns("readings.csv");
         fileMock.Setup(x => x.Length).Returns(512);
-        var accountsCacheMock = new Mock<AccountsCache>();
+        var accountsCacheMock = new Mock<IAccountsCache>();
         accountsCacheMock.Setup(x => x.Contains(It.IsAny<int>())).Returns(true);
-        var csvParser = new Mock<CsvParser>();
+        var csvParser = new Mock<ICsvParser>();
         csvParser.Setup(x => x.MaxFileLengthBytes).Returns(1024);
         csvParser.Setup(x => x.ParseCsvFile(It.IsAny<Stream>())).Returns(readingsInCsv.ToAsyncEnumerable());
         
@@ -60,9 +60,9 @@ public class MeterControllerTests
         var fileMock = new Mock<IFormFile>();
         fileMock.Setup(x => x.FileName).Returns("readings.csv");
         fileMock.Setup(x => x.Length).Returns(512);
-        var accountsCacheMock = new Mock<AccountsCache>();
+        var accountsCacheMock = new Mock<IAccountsCache>();
         accountsCacheMock.Setup(x => x.Contains(It.IsAny<int>())).Returns(true);
-        var csvParser = new Mock<CsvParser>();
+        var csvParser = new Mock<ICsvParser>();
         csvParser.Setup(x => x.MaxFileLengthBytes).Returns(1024);
         csvParser.Setup(x => x.ParseCsvFile(It.IsAny<Stream>())).Returns(readingsInCsv.ToAsyncEnumerable());
         
@@ -99,9 +99,9 @@ public class MeterControllerTests
         var fileMock = new Mock<IFormFile>();
         fileMock.Setup(x => x.FileName).Returns("readings.csv");
         fileMock.Setup(x => x.Length).Returns(512);
-        var accountsCacheMock = new Mock<AccountsCache>();
+        var accountsCacheMock = new Mock<IAccountsCache>();
         accountsCacheMock.Setup(x => x.Contains(It.IsAny<int>())).Returns(true);
-        var csvParser = new Mock<CsvParser>();
+        var csvParser = new Mock<ICsvParser>();
         csvParser.Setup(x => x.MaxFileLengthBytes).Returns(1024);
         csvParser.Setup(x => x.ParseCsvFile(It.IsAny<Stream>())).Returns(readingsInCsv.ToAsyncEnumerable());
         

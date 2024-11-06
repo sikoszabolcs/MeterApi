@@ -1,46 +1,69 @@
-using MeterApi.Controllers;
+
+using CsvHelper;
+using MeterApi.CsvOps;
+using Microsoft.Extensions.Options;
+using Moq;
+using CsvParser = MeterApi.CsvOps.CsvParser;
 
 namespace MeterApiTests;
 
-
 public class CsvFileParserTests
 {
-    // [Fact]
-    // public async Task ParseEmptyFilePath()
-    // {
-    //     var csvFileParser = new CsvFileParser();
-    //     var exception = await Assert.ThrowsAsync<InvalidOperationException>(
-    //         async () => await csvFileParser.ParseCsvFile(string.Empty));
-    //     Assert.Equal($"The file path is empty.", exception.Message);
-    // }
-    //
-    // [Fact]
-    // public async Task ParseNullFilePath()
-    // {
-    //     var csvFileParser = new CsvFileParser();
-    //     var exception = await Assert.ThrowsAsync<InvalidOperationException>(
-    //         async () => await csvFileParser.ParseCsvFile(null!));
-    //     Assert.Equal($"The file path is empty.", exception.Message);
-    // }
-    //
-    // [Fact]
-    // public async Task ParseInexistentFilePath()
-    // {
-    //     var csvFileParser = new CsvFileParser();
-    //     var csvFilePath = "I_dont_exist.csv";
-    //     var exception = await Assert.ThrowsAsync<InvalidOperationException>(
-    //         async () => await csvFileParser.ParseCsvFile(csvFilePath));
-    //     Assert.Equal($"Error parsing CSV file {csvFilePath}! The file was not found.", exception.Message);
-    // }
-    //
-    // [Fact]
-    // public async Task ParseTooLongFile()
-    // {
-    //     var maxFileLengthBytes = 1u;
-    //     var csvFileParser = new CsvFileParser(maxFileLengthBytes);
-    //     var csvFilePath = "TestData/Readings.csv";
-    //     var exception = await Assert.ThrowsAsync<InvalidOperationException>(
-    //         async () => await csvFileParser.ParseCsvFile(csvFilePath));
-    //     Assert.Equal($"Sorry, file too long. Max file size is {maxFileLengthBytes} bytes.", exception.Message);
-    // }
+    [Fact]
+    public async Task ParseNullFilePath()
+    {
+        var optionsMock = new Mock<IOptions<CsvParserOptions>>();
+        optionsMock.Setup(x => x.Value).Returns(new CsvParserOptions()
+        {
+            MaxFileLengthBytes = 1024
+        });
+        var csvFileParser = new CsvParser(optionsMock.Object);
+        
+        var exception = await Assert.ThrowsAsync<ArgumentNullException>(
+            async () => await csvFileParser.ParseCsvFile(null!).ToListAsync());
+        Assert.Equal($"Value cannot be null. (Parameter 'csvStream')", exception.Message);
+    }
+
+    [Fact]
+    public async Task ParseInvalidFile()
+    {
+        var optionsMock = new Mock<IOptions<CsvParserOptions>>();
+        optionsMock.Setup(x => x.Value).Returns(new CsvParserOptions()
+        {
+            MaxFileLengthBytes = 1024
+        });
+        var csvFileParser = new CsvParser(optionsMock.Object);
+
+        var fileStream = File.Open("./TestData/InvalidCsv.csv", FileMode.Open);
+        var records = csvFileParser.ParseCsvFile(fileStream);
+        await Assert.ThrowsAsync<HeaderValidationException>(
+            async () =>
+            {
+                await foreach (var record in records)
+                {
+                }
+            });
+    }
+    
+    [Fact]
+    public async Task ParseTooLongFile()
+    {
+        var optionsMock = new Mock<IOptions<CsvParserOptions>>();
+        optionsMock.Setup(x => x.Value).Returns(new CsvParserOptions()
+        {
+            MaxFileLengthBytes = 1
+        });
+        var csvFileParser = new CsvParser(optionsMock.Object);
+
+        var fileStream = File.Open("./TestData/Readings.csv", FileMode.Open);
+        var records = csvFileParser.ParseCsvFile(fileStream);
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            async () =>
+            {
+                await foreach (var record in records)
+                {
+                }
+            });
+        Assert.Equal($"Sorry, file too long. Max file size is 1 bytes.", exception.Message);
+    }
 }

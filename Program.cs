@@ -23,7 +23,7 @@ public class Program
         builder.Services.Configure<CsvParserOptions>(
             builder.Configuration.GetSection(CsvParserOptions.CsvParser));
         
-        builder.Services.AddSingleton<CsvParser>();
+        builder.Services.AddTransient<CsvParser>();
         builder.Services.AddTransient<AccountsCache>();
         
         var app = builder.Build();

@@ -5,21 +5,36 @@ using Microsoft.Extensions.Options;
 
 namespace MeterApi.CsvOps;
 
-public class CsvParser
+public interface ICsvParser
+{
+    public IAsyncEnumerable<MeterReading> ParseCsvFile(Stream csvStream);
+
+    public int LastErrorCount { get; }
+
+    public int MaxFileLengthBytes { get; }
+}
+
+public class CsvParser : ICsvParser
 {
     private readonly CsvParserOptions _options;
-
-    public CsvParser()
-    {
-        
-    }
+    
     public CsvParser(IOptions<CsvParserOptions> options)
     {
         _options = options.Value;
     }
 
-    public virtual async IAsyncEnumerable<MeterReading> ParseCsvFile(Stream csvStream)
+    public async IAsyncEnumerable<MeterReading> ParseCsvFile(Stream csvStream)
     {
+        if (csvStream == null)
+        {
+            throw new ArgumentNullException(nameof(csvStream));
+        }
+
+        if (csvStream.Length > MaxFileLengthBytes)
+        {
+            throw new InvalidOperationException($"Sorry, file too long. Max file size is {MaxFileLengthBytes} bytes.");
+        }
+        
         LastErrorCount = 0;
         using var reader = new StreamReader(csvStream);
         using var csv = new CsvReader(
@@ -33,6 +48,7 @@ public class CsvParser
                     return false;
                 }
             });
+        
         await foreach (var record in csv.GetRecordsAsync<MeterReading>())
         {
             yield return record;
@@ -41,5 +57,5 @@ public class CsvParser
 
     public int LastErrorCount { get; private set; }
 
-    public virtual int MaxFileLengthBytes => _options.MaxFileLengthBytes;
+    public int MaxFileLengthBytes => _options.MaxFileLengthBytes;
 }

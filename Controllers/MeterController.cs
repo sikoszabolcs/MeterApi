@@ -1,7 +1,9 @@
 using System.Globalization;
+using CsvHelper;
 using MeterApi.CsvOps;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ValidationException = System.ComponentModel.DataAnnotations.ValidationException;
 
 namespace MeterApi.Controllers;
 
@@ -9,14 +11,14 @@ namespace MeterApi.Controllers;
 [Route("meter-reading-uploads")]
 public class MeterController(
     AppDbContext dbContext,
-    CsvParser parser,
-    AccountsCache accountsCache,
+    ICsvParser parser,
+    IAccountsCache accountsCache,
     ILogger<MeterController> logger) : Controller
 {
     private readonly AppDbContext _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
     private readonly ILogger<MeterController> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    private readonly AccountsCache _accountsCache = accountsCache?? throw new ArgumentNullException(nameof(accountsCache));
-    private readonly CsvParser _csvParser = parser ?? throw new ArgumentNullException(nameof(parser));
+    private readonly IAccountsCache _accountsCache = accountsCache?? throw new ArgumentNullException(nameof(accountsCache));
+    private readonly ICsvParser _csvParser = parser ?? throw new ArgumentNullException(nameof(parser));
 
     [HttpPost(Name = "PostMeterReadingUploads")]
     public async Task<IActionResult> PostMeterReadingUploads(IFormFile file)
@@ -45,10 +47,9 @@ public class MeterController(
             {
                 if (record == null)
                 {
-                    _logger.LogError("Record is null");
                     continue;
                 }
-                
+
                 if (IsValid(record))
                 {
                     // Store time in UTC
@@ -73,6 +74,10 @@ public class MeterController(
             return Ok($"{successCount}/{_csvParser.LastErrorCount + insertErrorCount}");
         }
         catch (InvalidOperationException e)
+        {
+            return BadRequest(e.Message);
+        }
+        catch (ValidationException e)
         {
             return BadRequest(e.Message);
         }
