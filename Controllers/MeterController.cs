@@ -1,5 +1,4 @@
 using System.Globalization;
-using CsvHelper;
 using MeterApi.CsvOps;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -98,7 +97,7 @@ public class MeterController(
             {
                 isValid = false;
                 _logger.LogWarning(
-                    $"Tried to log a historic entry for record with AccountId {record.AccountId}, Instant {record.Instant.ToString(CultureInfo.InvariantCulture)}, Value {record.Value}. New entries must be older than {lastReading?.Instant.ToString(CultureInfo.InvariantCulture)} ");
+                    $"Tried to log a historic entry for record with AccountId {record.AccountId}, Instant {record.Instant.ToString(CultureInfo.InvariantCulture)}, Value {record.Value}. New entries must be older than {lastReading.Instant.ToString(CultureInfo.InvariantCulture)} ");
             }
         }
 

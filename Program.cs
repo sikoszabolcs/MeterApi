@@ -23,8 +23,8 @@ public class Program
         builder.Services.Configure<CsvParserOptions>(
             builder.Configuration.GetSection(CsvParserOptions.CsvParser));
         
-        builder.Services.AddTransient<CsvParser>();
-        builder.Services.AddTransient<AccountsCache>();
+        builder.Services.AddTransient<ICsvParser, CsvParser>();
+        builder.Services.AddTransient<IAccountsCache, AccountsCache>();
         
         var app = builder.Build();
 
