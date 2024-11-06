@@ -1,3 +1,4 @@
+using MeterApi.Controllers;
 using Microsoft.EntityFrameworkCore;
 
 namespace MeterApi;
@@ -18,6 +19,12 @@ public class Program
         builder.Services.AddDbContext<AppDbContext>(options =>
             options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+        builder.Services.Configure<CsvParserOptions>(
+            builder.Configuration.GetSection(CsvParserOptions.CsvParser));
+        
+        builder.Services.AddSingleton<CsvParser>();
+        builder.Services.AddTransient<AccountsCache>();
+        
         var app = builder.Build();
 
         // Configure the HTTP request pipeline.

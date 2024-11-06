@@ -3,18 +3,23 @@ using CsvHelper;
 using CsvHelper.Configuration;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
 namespace MeterApi.Controllers;
 
 [ApiController]
 [Route("meter-reading-uploads")]
-public class MeterController(AppDbContext dbContext, ILogger<MeterController> logger) : Controller
+public class MeterController(
+    AppDbContext dbContext,
+    CsvParser parser,
+    AccountsCache accountsCache,
+    ILogger<MeterController> logger) : Controller
 {
-    private readonly ILogger<MeterController> _logger = logger;
-    private readonly AppDbContext _dbContext = dbContext;
-    private const int MaxFileLengthBytes = 1024;
-    private readonly CsvFileParser _csvFileParser = new(MaxFileLengthBytes);
-    
+    private readonly AppDbContext _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
+    private readonly ILogger<MeterController> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    private readonly AccountsCache _accountsCache = accountsCache?? throw new ArgumentNullException(nameof(accountsCache));
+    private readonly CsvParser _csvParser = parser ?? throw new ArgumentNullException(nameof(parser));
+
     [HttpPost(Name = "PostMeterReadingUploads")]
     public async Task<IActionResult> PostMeterReadingUploads(IFormFile file)
     {
@@ -28,21 +33,19 @@ public class MeterController(AppDbContext dbContext, ILogger<MeterController> lo
             return BadRequest("File is not .csv");
         }
 
-        if (file.Length > MaxFileLengthBytes)
+        if (file.Length > _csvParser.MaxFileLengthBytes)
         {
-            return BadRequest($"File is too big. Max supported file size is {MaxFileLengthBytes} bytes.");
+            return BadRequest($"File is too big. Max supported file size is {_csvParser.MaxFileLengthBytes} bytes.");
         }
 
         try
         {
             var successCount = 0;
-            var failCount = 0;
-            
-            var accountIds = _dbContext.Accounts.Select(a => a.Id).ToHashSet();
+            var insertErrorCount = 0;
 
             await using (var transaction = await _dbContext.Database.BeginTransactionAsync())
             {
-                await foreach (var record in _csvFileParser.ParseCsvFile(file.OpenReadStream()))
+                await foreach (var record in _csvParser.ParseCsvFile(file.OpenReadStream()))
                 {
                     record.Instant = DateTime.SpecifyKind(record.Instant, DateTimeKind.Utc);
                     var lastReading =
@@ -55,27 +58,30 @@ public class MeterController(AppDbContext dbContext, ILogger<MeterController> lo
                     {
                         if (record.Value is >= 0 and <= 99999)
                         {
-                            if (accountIds.Contains(record.AccountId))
+                            if (_accountsCache.Contains(record.AccountId))
                             {
                                 _dbContext.Readings.Add(record);
                                 continue;
                             }
 
-                            _logger.LogWarning($"Invalid account id {record.AccountId} for record with AccountId {record.AccountId}, Instant {record.Instant.ToString(CultureInfo.InvariantCulture)}, Value {record.Value}");
+                            _logger.LogWarning(
+                                $"Invalid account id {record.AccountId} for record with AccountId {record.AccountId}, Instant {record.Instant.ToString(CultureInfo.InvariantCulture)}, Value {record.Value}");
                         }
                         else
                         {
-                            _logger.LogWarning($"Value out of range for record with AccountId {record.AccountId}, Instant {record.Instant.ToString(CultureInfo.InvariantCulture)}, Value {record.Value}");
+                            _logger.LogWarning(
+                                $"Value out of range for record with AccountId {record.AccountId}, Instant {record.Instant.ToString(CultureInfo.InvariantCulture)}, Value {record.Value}");
                         }
                     }
                     else
                     {
-                        _logger.LogWarning($"Value already logged at {lastReading?.Instant.ToString(CultureInfo.InvariantCulture)} for record with A|ccountId {record.AccountId}, Instant {record.Instant.ToString(CultureInfo.InvariantCulture)}, Value {record.Value}");
+                        _logger.LogWarning(
+                            $"Value already logged at {lastReading?.Instant.ToString(CultureInfo.InvariantCulture)} for record with A|ccountId {record.AccountId}, Instant {record.Instant.ToString(CultureInfo.InvariantCulture)}, Value {record.Value}");
                     }
-                    
-                    failCount++;
+
+                    insertErrorCount++;
                 }
-                
+
                 try
                 {
                     successCount = await _dbContext.SaveChangesAsync();
@@ -84,11 +90,13 @@ public class MeterController(AppDbContext dbContext, ILogger<MeterController> lo
                 }
                 catch (DbUpdateException ex)
                 {
-                    
+                    await transaction.RollbackAsync();
+                    _logger.LogError($"Error updating DB: {ex.Message}");
+                    return BadRequest(ex.Message);
                 }
             }
 
-            return Ok($"{successCount}/{_csvFileParser.LastFailureCount + failCount}");
+            return Ok($"{successCount}/{_csvParser.LastErrorCount + insertErrorCount}");
         }
         catch (InvalidOperationException e)
         {
