@@ -1,3 +1,5 @@
+using MeterApi.Entities;
+
 namespace MeterApi.Controllers;
 
 public class AccountsCache
@@ -5,6 +7,11 @@ public class AccountsCache
     private readonly AppDbContext _dbContext;
     private ILogger<AccountsCache> _logger;
     private HashSet<int> _accountIds;
+
+    public AccountsCache()
+    {
+        
+    }
     
     public AccountsCache(AppDbContext dbContext, ILogger<AccountsCache> logger)
     {
@@ -18,7 +25,7 @@ public class AccountsCache
     /// </summary>
     /// <param name="accountId"></param>
     /// <returns></returns>
-    public bool Contains(int accountId)
+    public virtual bool Contains(int accountId)
     {
         if (_accountIds == null || _accountIds.Count == 0)
         {

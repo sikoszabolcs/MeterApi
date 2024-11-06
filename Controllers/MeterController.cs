@@ -1,9 +1,6 @@
 using System.Globalization;
-using CsvHelper;
-using CsvHelper.Configuration;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
 namespace MeterApi.Controllers;
 
@@ -43,7 +40,7 @@ public class MeterController(
             var successCount = 0;
             var insertErrorCount = 0;
 
-            await using (var transaction = await _dbContext.Database.BeginTransactionAsync())
+            //await using (var transaction = await _dbContext.Database.BeginTransactionAsync())
             {
                 await foreach (var record in _csvParser.ParseCsvFile(file.OpenReadStream()))
                 {
@@ -86,11 +83,11 @@ public class MeterController(
                 {
                     successCount = await _dbContext.SaveChangesAsync();
                     // Commit the transaction
-                    await transaction.CommitAsync();
+                    //await transaction.CommitAsync();
                 }
                 catch (DbUpdateException ex)
                 {
-                    await transaction.RollbackAsync();
+                    //await transaction.RollbackAsync();
                     _logger.LogError($"Error updating DB: {ex.Message}");
                     return BadRequest(ex.Message);
                 }
