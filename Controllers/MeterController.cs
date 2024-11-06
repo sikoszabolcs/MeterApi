@@ -51,7 +51,7 @@ public class MeterController(
                             .OrderByDescending(reading => reading.Id)
                             .FirstOrDefault();
 
-                    if (lastReading?.Value != record.Value)
+                    if (lastReading?.Instant <= record.Instant)
                     {
                         if (record.Value is >= 0 and <= 99999)
                         {
@@ -73,7 +73,7 @@ public class MeterController(
                     else
                     {
                         _logger.LogWarning(
-                            $"Value already logged at {lastReading?.Instant.ToString(CultureInfo.InvariantCulture)} for record with A|ccountId {record.AccountId}, Instant {record.Instant.ToString(CultureInfo.InvariantCulture)}, Value {record.Value}");
+                            $"Tried to log a historic entry for record with AccountId {record.AccountId}, Instant {record.Instant.ToString(CultureInfo.InvariantCulture)}, Value {record.Value}. New entries must be older than {lastReading?.Instant.ToString(CultureInfo.InvariantCulture)} ");
                     }
 
                     insertErrorCount++;
