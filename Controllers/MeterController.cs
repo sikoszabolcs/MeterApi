@@ -40,57 +40,69 @@ public class MeterController(
             var successCount = 0;
             var insertErrorCount = 0;
 
-            //await using (var transaction = await _dbContext.Database.BeginTransactionAsync())
+            await foreach (var record in _csvParser.ParseCsvFile(file.OpenReadStream()))
             {
-                await foreach (var record in _csvParser.ParseCsvFile(file.OpenReadStream()))
+                if (record == null)
                 {
-                    record.Instant = DateTime.SpecifyKind(record.Instant, DateTimeKind.Utc);
-                    var lastReading =
-                        _dbContext.Readings
-                            .Where(reading => reading.AccountId == record.AccountId)
-                            .OrderByDescending(reading => reading.Id)
-                            .FirstOrDefault();
+                    _logger.LogError("Record is null");
+                    continue;
+                }
+                
+                record.Instant = DateTime.SpecifyKind(record.Instant, DateTimeKind.Utc);
+                // var lastReading =
+                //     _dbContext.Readings
+                //         .Where(reading => reading.AccountId == record.AccountId)
+                //         .OrderByDescending(reading => reading.Id)
+                //         .FirstOrDefault();
+                
+                var lastReading =
+                    _dbContext.Readings.Local
+                        .Where(reading => reading.AccountId == record.AccountId)
+                        .OrderByDescending(reading => reading.Id)
+                        .FirstOrDefault();
 
-                    if (lastReading?.Instant <= record.Instant)
+                var checksOk = true;
+                if (lastReading != null)
+                {
+                    if (lastReading.Instant > record.Instant)
                     {
-                        if (record.Value is >= 0 and <= 99999)
-                        {
-                            if (_accountsCache.Contains(record.AccountId))
-                            {
-                                _dbContext.Readings.Add(record);
-                                continue;
-                            }
-
-                            _logger.LogWarning(
-                                $"Invalid account id {record.AccountId} for record with AccountId {record.AccountId}, Instant {record.Instant.ToString(CultureInfo.InvariantCulture)}, Value {record.Value}");
-                        }
-                        else
-                        {
-                            _logger.LogWarning(
-                                $"Value out of range for record with AccountId {record.AccountId}, Instant {record.Instant.ToString(CultureInfo.InvariantCulture)}, Value {record.Value}");
-                        }
-                    }
-                    else
-                    {
+                        checksOk = false;
                         _logger.LogWarning(
                             $"Tried to log a historic entry for record with AccountId {record.AccountId}, Instant {record.Instant.ToString(CultureInfo.InvariantCulture)}, Value {record.Value}. New entries must be older than {lastReading?.Instant.ToString(CultureInfo.InvariantCulture)} ");
                     }
-
-                    insertErrorCount++;
                 }
 
-                try
+                if (record.Value is < 0 or > 99999)
                 {
-                    successCount = await _dbContext.SaveChangesAsync();
-                    // Commit the transaction
-                    //await transaction.CommitAsync();
+                    checksOk = false;
+                    _logger.LogWarning(
+                        $"Value out of range for record with AccountId {record.AccountId}, Instant {record.Instant.ToString(CultureInfo.InvariantCulture)}, Value {record.Value}");
                 }
-                catch (DbUpdateException ex)
+                
+                if (!_accountsCache.Contains(record.AccountId))
                 {
-                    //await transaction.RollbackAsync();
-                    _logger.LogError($"Error updating DB: {ex.Message}");
-                    return BadRequest(ex.Message);
+                    checksOk = false;
+                    _logger.LogWarning(
+                        $"Invalid account id {record.AccountId} for record with AccountId {record.AccountId}, Instant {record.Instant.ToString(CultureInfo.InvariantCulture)}, Value {record.Value}");
                 }
+
+                if (checksOk)
+                {
+                    _dbContext.Readings.Add(record);
+                    continue;
+                }
+
+                insertErrorCount++;
+            }
+
+            try
+            {
+                successCount = await _dbContext.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                _logger.LogError($"Error updating DB: {ex.Message}");
+                return BadRequest(ex.Message);
             }
 
             return Ok($"{successCount}/{_csvParser.LastErrorCount + insertErrorCount}");
